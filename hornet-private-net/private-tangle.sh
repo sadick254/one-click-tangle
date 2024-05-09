@@ -113,7 +113,7 @@ installTangle () {
   docker network prune -f
   # Ensure the script does not stop if it has not been pruned
   set +e
-  docker network create "private-tangle"
+  docker network create "tangle"
   set -e
 
   # When we install we ensure container images are updated
@@ -143,17 +143,17 @@ installTangle () {
 
 startContainers () {
   # Run the coordinator
-  docker-compose --log-level ERROR up -d coo
+  docker compose  up -d coo
 
   # Run the spammer
-  docker-compose --log-level ERROR up -d spammer
+  docker compose  up -d spammer
 
   # Run a regular node 
-  docker-compose --log-level ERROR up -d node
+  docker compose  up -d node
 }
 
 updateContainers () {
-  docker-compose pull
+  docker compose pull
 }
 
 ### 
@@ -162,7 +162,7 @@ updateContainers () {
 generateSnapshot () {
   echo "Generating an initial snapshot..."
     # First a key pair is generated
-  docker-compose run --rm node tool ed25519-key > key-pair.txt
+  docker compose run --rm node tool ed25519-key > key-pair.txt
 
   # Extract the public key use to generate the address
   local public_key="$(getPublicKey key-pair.txt)"
@@ -173,7 +173,7 @@ generateSnapshot () {
 
   # Generate the snapshot
   cd snapshots/private-tangle
-  docker-compose run --rm -v "$PWD:/output_dir" node tool snap-gen --networkID "private-tangle"\
+  docker compose run --rm -v "$PWD:/output_dir" node tool snap-gen --networkID "private-tangle"\
    --mintAddress "$(cat ../../address.txt)" --treasuryAllocation 1000000000 --outputPath /output_dir/full_snapshot.bin
 
   echo "Initial Ed25519 Address generated. You can find the keys at key-pair.txt and the address at address.txt"
@@ -187,7 +187,7 @@ generateSnapshot () {
 setupCoordinator () {
   local coo_key_pair_file=coo-milestones-key-pair.txt
 
-  docker-compose run --rm node tool ed25519-key > "$coo_key_pair_file"
+  docker compose run --rm node tool ed25519-key > "$coo_key_pair_file"
   # Private Key is exported as it is needed to run the Coordinator
   export COO_PRV_KEYS="$(getPrivateKey $coo_key_pair_file)"
 
@@ -210,7 +210,7 @@ bootstrapCoordinator () {
   fi
 
   # Bootstrap the coordinator
-  docker-compose run -d --rm -e COO_PRV_KEYS=$COO_PRV_KEYS coo --cooBootstrap --cooStartIndex 0 > coo.bootstrap.container
+  docker compose run -d --rm -e COO_PRV_KEYS=$COO_PRV_KEYS coo --cooBootstrap --cooStartIndex 0 > coo.bootstrap.container
 
   # Waiting for coordinator bootstrap
   # We guarantee that if bootstrap has not finished yet we sleep another time 
@@ -227,7 +227,7 @@ bootstrapCoordinator () {
     docker kill -s SIGINT $(cat ./coo.bootstrap.container)
     echo "Waiting coordinator bootstrap to stop gracefully..."
     sleep 10
-    docker rm $(cat ./coo.bootstrap.container)
+    # docker rm $(cat ./coo.bootstrap.container)
     rm ./coo.bootstrap.container
   else
     echo "Error. Coordinator has not been boostrapped."
@@ -313,13 +313,13 @@ setupAutopeering () {
 startAutopeering () {
   # Run the autopeering entry node
   echo "Starting autopeering entry node ..."
-  docker-compose --log-level ERROR up -d node-autopeering
+  docker compose  up -d node-autopeering
   sleep 5
 }
 
 stopContainers () {
   echo "Stopping containers..."
-	docker-compose --log-level ERROR down -v --remove-orphans
+	docker compose  down -v
 }
 
 startTangle () {
